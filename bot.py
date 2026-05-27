@@ -4,8 +4,7 @@ import io
 import sqlite3
 from PIL import Image
 from aiogram import Bot, Dispatcher, executor, types
-# ვიყენებთ Google-ის ახალ, ოფიციალურ SDK-ს შეცდომების თავიდან ასაცილებლად
-from google import genai
+import google.generativeai as genai
 
 # =====================================================================
 # 1. კონფიგურაცია
@@ -25,8 +24,8 @@ DB_PATH = "macromate.db"
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
-# ახალი SDK-ს ინიციალიზაცია
-ai_client = genai.Client(api_key=GEMINI_API_KEY)
+# Gemini-ს სტაბილური კონფიგურაცია
+genai.configure(api_key=GEMINI_API_KEY)
 
 # =====================================================================
 # 2. მონაცემთა ბაზა (SQLite)
@@ -84,38 +83,23 @@ async def send_welcome(message: types.Message):
     
     welcome_text = (
         "🤖 **Macromate წარმატებით მუშაობს Render-ზე!** 🚀\n\n"
-        "გამომიგზავნე ნებისმიერი ტექსტი ან ფოტო ბლინების, მანქანების თუ კოდის შესახებ და უცებ გაგიანალიზებ!"
+        "გამომიგზავნე ნებისმიერი ტექსტი ან ფოტო და უცებ გაგიანალიზებ!"
     )
     await message.reply(welcome_text, parse_mode="Markdown")
 
-@dp.message_handler(commands=['stats'])
-async def send_stats(message: types.Message):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) FROM users')
-        total_users = cursor.fetchone()[0]
-        conn.close()
-        await message.reply(f"📊 **ბოტის სტატისტიკა:**\n• მომხმარებლები ბაზაში: {total_users}")
-    except Exception as e:
-        await message.reply(f"❌ შეცდომა: {e}")
-
 # =====================================================================
-# 4. ტექსტისა და ფოტოების დამუშავება (Gemini 1.5 Flash)
+# 4. თავსებადი მოდელის გამოძახება
 # =====================================================================
 @dp.message_handler(content_types=['text'])
 async def handle_text(message: types.Message):
     register_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
     log_interaction(message.from_user.id, "text", message.text)
-    
     await bot.send_chat_action(chat_id=message.chat.id, action=types.ChatActions.TYPING)
     
     try:
-        # ახალი SDK სტრუქტურა მოდელისთვის
-        response = ai_client.models.generate_content(
-            model='gemini-1.5-flash',
-            contents=message.text,
-        )
+        # სტაბილური გამოძახება
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(message.text)
         await message.reply(response.text)
     except Exception as e:
         logging.error(f"Gemini Text Error: {e}")
@@ -126,7 +110,6 @@ async def handle_photo(message: types.Message):
     register_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
     user_prompt = message.caption if message.caption else "აღწერე რა არის ამ ფოტოზე დეტალურად"
     log_interaction(message.from_user.id, "photo", user_prompt)
-    
     await bot.send_chat_action(chat_id=message.chat.id, action=types.ChatActions.TYPING)
     
     try:
@@ -136,13 +119,9 @@ async def handle_photo(message: types.Message):
         
         image = Image.open(io.BytesIO(file_byte.getvalue()))
         
-        # ახალი SDK-ს მულტიმოდალური მოთხოვნა
-        response = ai_client.models.generate_content(
-            model='gemini-1.5-flash',
-            contents=[image, user_prompt]
-        )
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content([image, user_prompt])
         await message.reply(response.text)
-        
     except Exception as e:
         logging.error(f"Gemini Photo Error: {e}")
         await message.reply(f"❌ ფოტოს დამუშავების შეცდომა: {e}")
