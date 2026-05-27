@@ -11,8 +11,8 @@ import google.generativeai as genai
 # =====================================================================
 logging.basicConfig(level=logging.INFO)
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "აქ_ჩასვი_შენი_ტელეგრამ_ბოტის_ტოკენი")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "აქ_ჩასვი_შენი_ჯემინის_key")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8804977127:AAGZb-DnpQN7H4UHNCBDBtt4TMRdrijDxCM")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyBsUUmLtihYMDxLRBsTPNX9N0KqFI0NKuc")
 
 PORT = int(os.environ.get("PORT", 10000))
 WEBHOOK_HOST = os.environ.get("WEBHOOK_HOST", "https://macromate-bot-ku1o.onrender.com")
